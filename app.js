@@ -1,25 +1,24 @@
-// 하단 디테일 박스 숨김 및 보임 기능
-const detailGuide = document.querySelector('.guide');
-const guideIcon = document.querySelector('.guide i');
-const detailBox = document.querySelector('.detail-box');
-const detailHeight = detailBox.offsetHeight;
+// 디테일 박스 숨김 및 보임 기능
+const detailGuide = document.querySelector('.guide'); // 가이드 버튼
+const guideIcon = document.querySelector('.guide i'); // 가이드 아이콘
+const detailBox = document.querySelector('.detail-box'); // 디테일 박스
+const detailHeight = detailBox.offsetHeight; // 디테일 박스의 높이
 
-detailBox.style.bottom = -detailHeight + 'px';
-// detailBox.style.bottom = 0;
+detailBox.style.bottom = -detailHeight + 'px'; // 디테일 박스를 처음에 숨김
 
 detailGuide.addEventListener('click', function () {
-  this.classList.toggle('active');
+  this.classList.toggle('active'); // 클릭할 때마다 active 클래스 토글
 
   if (this.classList.contains('active')) {
-    guideIcon.setAttribute('class', 'ri-arrow-drop-down-line');
-    detailBox.style.bottom = 0;
+    guideIcon.setAttribute('class', 'ri-arrow-drop-down-line'); // active 클래스가 있으면 아이콘 변경
+    detailBox.style.bottom = 0; // 디테일 박스를 보이게 함
   } else {
-    guideIcon.setAttribute('class', 'ri-arrow-drop-up-line');
-    detailBox.style.bottom = -detailHeight + 'px';
+    guideIcon.setAttribute('class', 'ri-arrow-drop-up-line'); // active 클래스가 없으면 아이콘 변경
+    detailBox.style.bottom = -detailHeight + 'px'; // 디테일 박스를 숨김
   }
 });
 
-// console.log(data);
+// 데이터 필터링
 const currentData = data.records.filter(
   (item) =>
     item.데이터기준일자.split('-')[0] >= '2023' &&
@@ -27,22 +26,58 @@ const currentData = data.records.filter(
     item.위도 !== ''
 );
 
-// console.log(currentData);
+//검색 버튼 기능
+const searchBtn = document.querySelector('.search-engine button');
+// 검색 버튼
+const searchInput = document.querySelector('.search-engine input');
+// 검색 입력창
+const mapElmt = document.querySelector('#map');
+// 네이버 맵 영역
+const loding = document.querySelector('.loding');
+// 로딩 이미지
 
-// 네이버 맵 적용
-navigator.geolocation.getCurrentPosition((position) => {
-  // console.log(position);
-  const lat = position.coords.latitude;
-  const lng = position.coords.longitude;
-  // console.log(lat, lng);
+// 검색 버튼 클릭 시 실행 함수
+searchBtn.addEventListener('click', function () {
+  const searchValue = searchInput.value;
+  // 입력값 저장
 
-  stratLenderMap(lat, lng);
+  if (searchInput.value === '') {
+    alert('검색어를 입력해 주세요');
+    searchInput.focus(); // 커서 입력창에 포커스
+    return;
+  } // 검색어 없이 클릭할 경우 알림
+
+  const searchResult = currentData.filter(
+    (item) =>
+      item.도서관명.includes(searchValue) || item.시군구명.includes(searchValue)
+  );
+
+  if (searchResult.length === 0) {
+    alert('검색 결과가 없습니다');
+    searchInput.value = ''; // 검색어 지움
+    searchInput.focus(); // 커서 입력창에 포커스
+    return;
+  } else {
+    mapElmt.innerHTML = ''; // 기존 맵 삭제
+    startLenderMap(searchResult[0].위도, searchResult[0].경도);
+    searchBtn.value = ''; //검색어 지움
+  }
+
+  // console.log(searchResult);
 });
 
-function stratLenderMap(lat, lng) {
+// 네이버 지도 초기화
+navigator.geolocation.getCurrentPosition((position) => {
+  const lat = position.coords.latitude; // 사용자의 현재 위도
+  const lng = position.coords.longitude; // 사용자의 현재 경도
+
+  startLenderMap(lat, lng); // 지도를 초기화하고 현재 위치로 중심을 맞춤
+});
+
+function startLenderMap(lat, lng) {
   var map = new naver.maps.Map('map', {
-    center: new naver.maps.LatLng(lat, lng),
-    zoom: 13, // 숫자가 높을수록 확대
+    center: new naver.maps.LatLng(lat, lng), // 지도의 중심을 사용자의 현재 위치로 설정
+    zoom: 13, // 확대 수준 설정
   });
 
   var marker = new naver.maps.Marker({
@@ -55,8 +90,7 @@ function stratLenderMap(lat, lng) {
     let bounds = map.getBounds();
 
     if (bounds.hasLatLng(latlng)) {
-      // 현재 위치를 기준으로 화면 사이에 있는지 확인,
-      // 화면 내부의 마커만 생성
+      // 지도 범위 안에 있는 도서관만 마커 추가
       var marker = new naver.maps.Marker({
         position: latlng,
         map: map,
@@ -75,13 +109,15 @@ function stratLenderMap(lat, lng) {
         homePage: item.홈페이지주소,
       });
 
-      // console.log(marker.title);
-
       let infoWindow = new naver.maps.InfoWindow({
         content: `
         <h4 style="padding: 0.25rem 0.5rem; font-size:12px; font-weight:500; color:#555;">${item.도서관명}</h4>
         `,
       });
+
+      setTimeout(() => {
+        loding.style.display = 'none';
+      }, 500);
 
       naver.maps.Event.addListener(marker, 'click', function () {
         if (infoWindow.getMap()) {
@@ -105,14 +141,12 @@ function stratLenderMap(lat, lng) {
           homePage: marker.homePage,
         };
 
-        getInfoOnMarker(markerInfoData);
+        getInfoOnMarker(markerInfoData); // 마커 클릭 시, 디테일 박스에 정보 표시
       });
     }
   });
 
   function getInfoOnMarker(markerInfoData) {
-    // console.log(markerInfoData);
-
     const infoWrapper = document.querySelector('.detail-wrapper');
     infoWrapper.innerHTML = ``;
 
@@ -129,7 +163,7 @@ function stratLenderMap(lat, lng) {
       contact,
       address,
       homePage,
-    } = markerInfoData; // 구조분해 할당
+    } = markerInfoData;
 
     const infoElmt = `
     <div class="detail-title">
@@ -182,6 +216,6 @@ function stratLenderMap(lat, lng) {
               </div>
             </div>
       `;
-    infoWrapper.insertAdjacentHTML('beforeend', infoElmt);
+    infoWrapper.insertAdjacentHTML('beforeend', infoElmt); // 디테일 박스에 도서관 정보 추가
   }
 }
